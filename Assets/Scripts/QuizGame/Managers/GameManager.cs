@@ -61,14 +61,14 @@ namespace QuizGame.Managers
         [SerializeField] private Camera uiKamera;
         [Tooltip("Canvas'ın kameraya uzaklığı. Karakterler bu mesafenin ARKASINDA kalmalı.\nKüçük değer = HUD karakterlerin önünde görünür (önerilen: 1-5).")]
         [SerializeField] private float canvasUzaklik = 1f;
+        [Tooltip("Canvas altındaki Background objesi. Savaş sırasında gizlenir, soru gelince gösterilir.\nBoş bırakılırsa Canvas altında 'Background' isimli obje otomatik aranır.")]
+        [SerializeField] private GameObject canvasArkaplan;
 
         [Header("═══ Karakter Görünürlük ═══")]
-        [Tooltip("Doğru cevaptan sonra karakterlerin belirme süresi (saniye)")]
-        [SerializeField] private float karakterBelirmeSuresi = 0.4f;
-        [Tooltip("Animasyon bittikten sonra karakterlerin kaybolma süresi (saniye)")]
-        [SerializeField] private float karakterKaybolmaSuresi = 0.3f;
         [Tooltip("Vüruş animasyonundan sonra bekleme süresi (saniye)")]
         [SerializeField] private float vurusSonrasiBekleme = 1.5f;
+        [Tooltip("Ölüm animasyonunun tam oynama süresi. Karakter ölünce bu kadar beklenir, ardından oyun sonu açılır.")]
+        [SerializeField] private float olumAnimasyonBeklemeSuresi = 3.0f;
 
         // Oyuncu verileri
         private StudentData oyuncu1Data;
@@ -140,6 +140,14 @@ namespace QuizGame.Managers
 
             Debug.Log($"Canvas 'Screen Space - Camera' moduna geçirildi. " +
                 $"Kamera: {kamera.name}, PlaneDistance: {canvasUzaklik}");
+
+            // Canvas altındaki Background objesini otomatik bul
+            if (canvasArkaplan == null)
+            {
+                Transform bgTransform = anaCanvas.transform.Find("Background");
+                if (bgTransform != null)
+                    canvasArkaplan = bgTransform.gameObject;
+            }
         }
 
         // ═══════════════════════════════════════════════════
@@ -379,9 +387,6 @@ namespace QuizGame.Managers
             // Quiz panelini aktif et ve soruyu göster
             var soru = mevcutSorular[soruIndex];
 
-            // Soru gösterilmeden önce karakterleri gizle
-            KarakterleriGizle();
-
             if (quizUI != null)
             {
                 quizUI.gameObject.SetActive(true);
@@ -530,12 +535,13 @@ namespace QuizGame.Managers
         }
 
         /// <summary>
-        /// Yeni akış: Karakterler belirir → Vüruş animasyonu → Animation Event ile hasar → Karakterler kaybolur → Sonraki soru
+        /// Yeni akış: UI fade-out → Vüruş animasyonu → Animation Event ile hasar → UI fade-in → Sonraki soru
+        /// Karakterler her zaman sahnede aktif. Ekran kararması (fade) ile yönetiliyor.
         /// </summary>
         private IEnumerator KarakterAnimasyonuVeSoruGecisi(int dogruOyuncuIndex)
         {
-            // 1) Karakterleri görünür yap (scale-up)
-            yield return StartCoroutine(KarakterleriGosterAnimasyonlu());
+            // 1) Arkaplanı gizle (3D sahne görünsün)
+            if (canvasArkaplan != null) canvasArkaplan.SetActive(false);
 
             // 2) Kısa bekleme - oyuncu karakterleri görsün
             yield return new WaitForSeconds(0.3f);
@@ -583,14 +589,32 @@ namespace QuizGame.Managers
                 if (oyuncu2Karakter != null) gameHUD.CanlariGuncelle(1, oyuncu2Karakter.MevcutCan);
             }
 
-            // 5) Animasyon sonrası bekleme
-            yield return new WaitForSeconds(vurusSonrasiBekleme);
+            // 5) Birisi öldü mü kontrol et
+            bool birisiOldu = (vurulan != null && !vurulan.HayattaMi);
 
-            // 6) Karakterleri gizle (scale-down)
-            yield return StartCoroutine(KarakterleriGizleAnimasyonlu());
+            if (birisiOldu)
+            {
+                // Ölüm animasyonu tamamen oynasın — sahne dramatik kalsın
+                Debug.Log($"Karakter öldü! Ölüm animasyonu bekleniyor ({olumAnimasyonBeklemeSuresi}s)...");
+                yield return new WaitForSeconds(olumAnimasyonBeklemeSuresi);
 
-            // 7) Sonraki soruya geç
-            DurumDegistir(OyunDurumu.SoruGosterim);
+                // Arkaplanı geri getir
+                if (canvasArkaplan != null) canvasArkaplan.SetActive(true);
+
+                // Oyun sonu ekranına geç
+                DurumDegistir(OyunDurumu.OyunSonu);
+            }
+            else
+            {
+                // 6) Normal akış: Vuruş sonrası bekleme
+                yield return new WaitForSeconds(vurusSonrasiBekleme);
+
+                // 7) Arkaplanı geri getir
+                if (canvasArkaplan != null) canvasArkaplan.SetActive(true);
+
+                // 8) Sonraki soruya geç
+                DurumDegistir(OyunDurumu.SoruGosterim);
+            }
         }
 
         // =================== Eşki yöntem (geriye uyumluluk) ===================
@@ -610,64 +634,11 @@ namespace QuizGame.Managers
             if (oyuncu2Karakter != null) oyuncu2Karakter.Gizle();
         }
 
-        /// <summary>Karakterleri animasyonlu şekilde gösterir (scale 0→1).</summary>
-        private IEnumerator KarakterleriGosterAnimasyonlu()
+        /// <summary>Karakterleri anında gösterir (animasyonsuz).</summary>
+        private void KarakterleriGoster()
         {
-            // Önce scale 0 ile aktif et
-            if (oyuncu1Karakter != null)
-            {
-                oyuncu1Karakter.transform.localScale = Vector3.zero;
-                oyuncu1Karakter.Goster();
-            }
-            if (oyuncu2Karakter != null)
-            {
-                oyuncu2Karakter.transform.localScale = Vector3.zero;
-                oyuncu2Karakter.Goster();
-            }
-
-            // Animate scale 0 → 1
-            float t = 0f;
-            Vector3 hedefScale1 = oyuncu1Karakter != null ? Vector3.one : Vector3.one;
-            Vector3 hedefScale2 = oyuncu2Karakter != null ? Vector3.one : Vector3.one;
-
-            while (t < karakterBelirmeSuresi)
-            {
-                t += Time.deltaTime;
-                float lerp = Mathf.SmoothStep(0f, 1f, t / karakterBelirmeSuresi);
-
-                if (oyuncu1Karakter != null)
-                    oyuncu1Karakter.transform.localScale = Vector3.Lerp(Vector3.zero, hedefScale1, lerp);
-                if (oyuncu2Karakter != null)
-                    oyuncu2Karakter.transform.localScale = Vector3.Lerp(Vector3.zero, hedefScale2, lerp);
-
-                yield return null;
-            }
-
-            if (oyuncu1Karakter != null) oyuncu1Karakter.transform.localScale = hedefScale1;
-            if (oyuncu2Karakter != null) oyuncu2Karakter.transform.localScale = hedefScale2;
-        }
-
-        /// <summary>Karakterleri animasyonlu şekilde gizler (scale 1→0).</summary>
-        private IEnumerator KarakterleriGizleAnimasyonlu()
-        {
-            Vector3 baslangicScale1 = oyuncu1Karakter != null ? oyuncu1Karakter.transform.localScale : Vector3.one;
-            Vector3 baslangicScale2 = oyuncu2Karakter != null ? oyuncu2Karakter.transform.localScale : Vector3.one;
-
-            float t = 0f;
-            while (t < karakterKaybolmaSuresi)
-            {
-                t += Time.deltaTime;
-                float lerp = Mathf.SmoothStep(0f, 1f, t / karakterKaybolmaSuresi);
-
-                if (oyuncu1Karakter != null)
-                    oyuncu1Karakter.transform.localScale = Vector3.Lerp(baslangicScale1, Vector3.zero, lerp);
-                if (oyuncu2Karakter != null)
-                    oyuncu2Karakter.transform.localScale = Vector3.Lerp(baslangicScale2, Vector3.zero, lerp);
-
-                yield return null;
-            }
-
-            KarakterleriGizle();
+            if (oyuncu1Karakter != null) oyuncu1Karakter.Goster();
+            if (oyuncu2Karakter != null) oyuncu2Karakter.Goster();
         }
 
         // ═══════════════════════════════════════════════════
@@ -756,9 +727,6 @@ namespace QuizGame.Managers
                 quizUI.gameObject.SetActive(false);
             }
             if (gameHUD != null) gameHUD.Gizle();
-
-            // Karakterleri de gizle
-            KarakterleriGizle();
         }
 
         private string ZayifDersleriGetir(PlayerGameResult sonuc)
@@ -819,9 +787,6 @@ namespace QuizGame.Managers
                 quizUI.gameObject.SetActive(false);
             }
             if (oyunAlaniPanel != null) oyunAlaniPanel.SetActive(false);
-
-            // Karakterleri gizle
-            KarakterleriGizle();
 
             // Durumu sıfırla
             sonDogruOyuncuIndex = -1;

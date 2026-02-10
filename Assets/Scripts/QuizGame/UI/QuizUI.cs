@@ -51,8 +51,10 @@ namespace QuizGame.UI
         [SerializeField] private Button aciklamaDevamButton;
 
         [Header("═══ Animasyon Ayarları ═══")]
+        [Tooltip("Quiz panelinin transparan olma süresi (fade-out)")]
         [SerializeField] private float kaybolusSuresi = 1.0f;
-        [SerializeField] private float asagiKaymaMiktari = 800f;
+        [Tooltip("Yeni soru gösterilirken fade-in süresi")]
+        [SerializeField] private float fadeInSuresi = 0.5f;
 
         // Oyun durumu
         private QuestionData mevcutSoru;
@@ -65,6 +67,7 @@ namespace QuizGame.UI
         private float soruBaslangicZamani;
         private bool yanlisYapildi = false; // Bu soruda herhangi biri yanlış yaptı mı?
         private bool aciklamaBekliyor = false; // Açıklama paneli açık mı?
+        private CanvasGroup quizCanvasGroup; // Root CanvasGroup (fade animasyonu için)
 
         // Oyuncu bilgileri
         private int oyuncu1OyuncuIndex = 0;
@@ -85,6 +88,11 @@ namespace QuizGame.UI
             CezalariSifirla();
             if (bilgiText != null) bilgiText.text = "";
             if (aciklamaPaneli != null) aciklamaPaneli.SetActive(false);
+            // CanvasGroup'u görünür yap
+            var cg = QuizCanvasGroupGetir();
+            cg.alpha = 1f;
+            cg.blocksRaycasts = true;
+            cg.interactable = true;
         }
 
         private void EnsureInit()
@@ -193,6 +201,9 @@ namespace QuizGame.UI
             aciklamaBekliyor = false;
             if (bilgiText != null) bilgiText.text = "";
             if (aciklamaPaneli != null) aciklamaPaneli.SetActive(false);
+
+            // Quiz panelini fade-in ile göster
+            StartCoroutine(FadeInAnimasyonu());
         }
 
         // ═══════════════════════════════════════════════════
@@ -340,39 +351,60 @@ namespace QuizGame.UI
             OnSoruPaneliKapandi?.Invoke();
         }
 
-        /// <summary>Sadece görsel animasyon (event fırlatmaz).</summary>
+        /// <summary>Tüm Quiz UI panelini yavaşça transparan yaparak kaybet (fade-out).
+        /// Arkadaki 3D karakterler transparan olan UI'ın arkasından görünür hale gelir.</summary>
         private IEnumerator SoruKaybolmaAnimasyonuInternal()
         {
-            if (soruPanel == null) yield break;
-
             // Kısa bekleme (doğru cevabı görsünler)
             yield return new WaitForSeconds(1.0f);
 
-            Vector2 baslangicPos = soruPanel.anchoredPosition;
-            Vector2 hedefPos = baslangicPos + Vector2.down * asagiKaymaMiktari;
-            CanvasGroup canvasGroup = soruPanel.GetComponent<CanvasGroup>();
-            if (canvasGroup == null)
-                canvasGroup = soruPanel.gameObject.AddComponent<CanvasGroup>();
+            // Tüm quiz panelinin CanvasGroup'unu fade-out yap
+            var cg = QuizCanvasGroupGetir();
 
             float gecenSure = 0f;
-
             while (gecenSure < kaybolusSuresi)
             {
                 gecenSure += Time.deltaTime;
                 float t = gecenSure / kaybolusSuresi;
-                float smoothT = Mathf.SmoothStep(0, 1, t);
-
-                soruPanel.anchoredPosition = Vector2.Lerp(baslangicPos, hedefPos, smoothT);
-                canvasGroup.alpha = Mathf.Lerp(1f, 0f, smoothT);
-
+                float smoothT = Mathf.SmoothStep(0f, 1f, t);
+                cg.alpha = Mathf.Lerp(1f, 0f, smoothT);
                 yield return null;
             }
 
-            soruPanel.gameObject.SetActive(false);
+            cg.alpha = 0f;
+            cg.blocksRaycasts = false;
+            cg.interactable = false;
+        }
 
-            // Soru panelini sıfırla (sonraki soru için)
-            soruPanel.anchoredPosition = Vector2.zero;
-            canvasGroup.alpha = 1f;
+        /// <summary>Root CanvasGroup'u lazily oluşturur/alır (fade animasyonu için).</summary>
+        private CanvasGroup QuizCanvasGroupGetir()
+        {
+            if (quizCanvasGroup == null)
+            {
+                quizCanvasGroup = GetComponent<CanvasGroup>();
+                if (quizCanvasGroup == null)
+                    quizCanvasGroup = gameObject.AddComponent<CanvasGroup>();
+            }
+            return quizCanvasGroup;
+        }
+
+        /// <summary>Quiz panelini fade-in ile gösterir (yeni soru geldiğinde).</summary>
+        private IEnumerator FadeInAnimasyonu()
+        {
+            var cg = QuizCanvasGroupGetir();
+            cg.alpha = 0f;
+            cg.blocksRaycasts = true;
+            cg.interactable = true;
+
+            float t = 0f;
+            while (t < fadeInSuresi)
+            {
+                t += Time.deltaTime;
+                cg.alpha = Mathf.Lerp(0f, 1f, t / fadeInSuresi);
+                yield return null;
+            }
+
+            cg.alpha = 1f;
         }
 
         // ═══════════════════════════════════════════════════
@@ -422,7 +454,13 @@ namespace QuizGame.UI
 
         public void Gizle()
         {
+            StopAllCoroutines();
             if (soruPanel != null) soruPanel.gameObject.SetActive(false);
+            // CanvasGroup'u sıfırla (sonraki kullanım için)
+            var cg = QuizCanvasGroupGetir();
+            cg.alpha = 1f;
+            cg.blocksRaycasts = true;
+            cg.interactable = true;
         }
 
         private void OnDestroy()

@@ -1768,15 +1768,15 @@ PrefabInstance:
     m_Modifications:
     - target: {fileID: -8679921383154817045, guid: 0bb4acbf3499e5c488f168e085167b74, type: 3}
       propertyPath: m_LocalScale.x
-      value: 1
+      value: 0.11000001
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 0bb4acbf3499e5c488f168e085167b74, type: 3}
       propertyPath: m_LocalScale.y
-      value: 1
+      value: 0.11000001
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 0bb4acbf3499e5c488f168e085167b74, type: 3}
       propertyPath: m_LocalScale.z
-      value: 1
+      value: 0.11000001
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 0bb4acbf3499e5c488f168e085167b74, type: 3}
       propertyPath: m_LocalPosition.x
@@ -1884,10 +1884,6 @@ MonoBehaviour:
   karakterRendererlar: []
   vurusEfektiPrefab: {fileID: 1121192042590650, guid: e1b08032bec16ba4eb1ae23cbd572664, type: 3}
   vurusNoktasi: {fileID: 1248836634}
-  vurusKaymaMesafesi: 1
-  vurusAnimSuresi: 0.6
-  titremeSuresi: 0.3
-  titremeSiddeti: 0.05
   hasarFlashRengi: {r: 1, g: 0, b: 0, a: 1}
   flashSayisi: 3
 --- !u!1 &996878104
@@ -2131,9 +2127,9 @@ MonoBehaviour:
   anaCanvas: {fileID: 1483419009}
   uiKamera: {fileID: 291416508}
   canvasUzaklik: 1
-  karakterBelirmeSuresi: 0.4
-  karakterKaybolmaSuresi: 0.3
+  canvasArkaplan: {fileID: 0}
   vurusSonrasiBekleme: 1.5
+  olumAnimasyonBeklemeSuresi: 2
 --- !u!4 &1024439868
 Transform:
   m_ObjectHideFlags: 0
@@ -3708,7 +3704,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 4332679617072672114, guid: f82a323115e5d3c4ba775f5961d52410, type: 3}
       propertyPath: m_AnchoredPosition.y
-      value: -15.541046
+      value: -15.541016
       objectReference: {fileID: 0}
     - target: {fileID: 4484118229226687624, guid: f82a323115e5d3c4ba775f5961d52410, type: 3}
       propertyPath: m_IsActive
@@ -3720,7 +3716,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 4536865368391965631, guid: f82a323115e5d3c4ba775f5961d52410, type: 3}
       propertyPath: m_AnchoredPosition.y
-      value: -15.541046
+      value: -15.541016
       objectReference: {fileID: 0}
     - target: {fileID: 4536865368612507507, guid: f82a323115e5d3c4ba775f5961d52410, type: 3}
       propertyPath: m_AnchoredPosition.x
@@ -4164,7 +4160,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 6700650466825880979, guid: f82a323115e5d3c4ba775f5961d52410, type: 3}
       propertyPath: m_AnchoredPosition.y
-      value: -15.541046
+      value: -15.541016
       objectReference: {fileID: 0}
     - target: {fileID: 7073679000248443565, guid: f82a323115e5d3c4ba775f5961d52410, type: 3}
       propertyPath: m_AnchorMax.y
@@ -4200,7 +4196,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 7120132243394094903, guid: f82a323115e5d3c4ba775f5961d52410, type: 3}
       propertyPath: m_AnchoredPosition.y
-      value: -15.541046
+      value: -15.541016
       objectReference: {fileID: 0}
     - target: {fileID: 7120132243714126843, guid: f82a323115e5d3c4ba775f5961d52410, type: 3}
       propertyPath: m_AnchoredPosition.x
@@ -4448,7 +4444,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 9098388914936685063, guid: f82a323115e5d3c4ba775f5961d52410, type: 3}
       propertyPath: m_AnchoredPosition.y
-      value: -15.541046
+      value: -15.541016
       objectReference: {fileID: 0}
     - target: {fileID: 9098388915119388363, guid: f82a323115e5d3c4ba775f5961d52410, type: 3}
       propertyPath: m_AnchoredPosition.x
@@ -5267,15 +5263,15 @@ PrefabInstance:
     m_Modifications:
     - target: {fileID: -8679921383154817045, guid: 0bb4acbf3499e5c488f168e085167b74, type: 3}
       propertyPath: m_LocalScale.x
-      value: 1
+      value: 0.11000001
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 0bb4acbf3499e5c488f168e085167b74, type: 3}
       propertyPath: m_LocalScale.y
-      value: 1
+      value: 0.11000001
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 0bb4acbf3499e5c488f168e085167b74, type: 3}
       propertyPath: m_LocalScale.z
-      value: 1
+      value: 0.11000001
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 0bb4acbf3499e5c488f168e085167b74, type: 3}
       propertyPath: m_LocalPosition.x
@@ -5379,10 +5375,6 @@ MonoBehaviour:
   karakterRendererlar: []
   vurusEfektiPrefab: {fileID: 1329845292236604, guid: 9bba9cf244c53c5439505dfc96fdd11c, type: 3}
   vurusNoktasi: {fileID: 1971003593}
-  vurusKaymaMesafesi: 1
-  vurusAnimSuresi: 0.6
-  titremeSuresi: 0.3
-  titremeSiddeti: 0.05
   hasarFlashRengi: {r: 1, g: 0, b: 0, a: 1}
   flashSayisi: 3
 --- !u!1 &1906367006

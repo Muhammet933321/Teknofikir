@@ -42,13 +42,8 @@ namespace QuizGame.Gameplay
         [SerializeField] private GameObject vurusEfektiPrefab;
         [Tooltip("Rakibin vuruş alacağı nokta (boş Transform). Karakter modelinin gövde kısmına yerleştirin.")]
         [SerializeField] private Transform vurusNoktasi;
-        [Tooltip("Vuruş sırasında karakterin rakibe doğru kayma mesafesi (world unit)")]
-        [SerializeField] private float vurusKaymaMesafesi = 1.0f;
-        [SerializeField] private float vurusAnimSuresi = 0.6f;
 
         [Header("═══ Hasar Efekti ═══")]
-        [SerializeField] private float titremeSuresi = 0.3f;
-        [SerializeField] private float titremeSiddeti = 0.05f;
         [Tooltip("Hasar anında modelin yanıp söneceği renk")]
         [SerializeField] private Color hasarFlashRengi = Color.red;
         [SerializeField] private int flashSayisi = 3;
@@ -97,6 +92,12 @@ namespace QuizGame.Gameplay
             // Animator otomatik bul
             if (karakterAnimator == null)
                 karakterAnimator = GetComponentInChildren<Animator>();
+
+            // Root Motion kapatılıyor: Animasyondaki kök kemik hareketi
+            // karakterin pozisyonunu değiştirmesin.
+            // Bu açıksa karakter yukarı kayar veya aşırı hareket eder.
+            if (karakterAnimator != null)
+                karakterAnimator.applyRootMotion = false;
         }
 
         public void Baslat(int index, string ad)
@@ -147,9 +148,6 @@ namespace QuizGame.Gameplay
 
             // Hasar flash efekti
             StartCoroutine(HasarFlashEfekti());
-
-            // Titreme efekti
-            StartCoroutine(TitremeEfekti());
 
             OnCanDegisti?.Invoke(mevcutCan);
             Debug.Log($"Oyuncu {oyuncuIndex + 1} ({oyuncuAdi}) hasar aldı! Kalan can: {mevcutCan}");
@@ -285,26 +283,6 @@ namespace QuizGame.Gameplay
 
                 yield return new WaitForSeconds(0.08f);
             }
-        }
-
-        /// <summary>
-        /// 3D modeli yerinde titretir.
-        /// </summary>
-        private IEnumerator TitremeEfekti()
-        {
-            Vector3 orijinalPoz = transform.position;
-            float gecenSure = 0f;
-
-            while (gecenSure < titremeSuresi)
-            {
-                gecenSure += Time.deltaTime;
-                float x = Random.Range(-titremeSiddeti, titremeSiddeti);
-                float z = Random.Range(-titremeSiddeti, titremeSiddeti);
-                transform.position = orijinalPoz + new Vector3(x, 0, z);
-                yield return null;
-            }
-
-            transform.position = orijinalPoz;
         }
     }
 }
