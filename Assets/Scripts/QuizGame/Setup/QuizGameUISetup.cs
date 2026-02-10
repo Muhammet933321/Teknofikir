@@ -1,6 +1,7 @@
 using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
+using QuizGame.UI;
 
 namespace QuizGame.Setup
 {
@@ -42,6 +43,12 @@ namespace QuizGame.Setup
             // Sınıf Yönetim paneli
             GameObject sinifYonetim = OlusturSinifYonetimPaneli(canvasObj.transform);
 
+            // Soru Yönetim paneli (YENİ)
+            GameObject soruYonetim = OlusturSoruYonetimPaneli(canvasObj.transform);
+
+            // Öğrenci Detay paneli (YENİ)
+            GameObject ogrenciDetay = OlusturOgrenciDetayPaneli(canvasObj.transform);
+
             // Ayarlar paneli
             GameObject ayarlarPanel = OlusturAyarlarPaneli(canvasObj.transform);
 
@@ -68,6 +75,8 @@ namespace QuizGame.Setup
 
             // Panelleri varsayılan olarak kapat (Sadece ana menü açık)
             sinifYonetim.SetActive(false);
+            soruYonetim.SetActive(false);
+            ogrenciDetay.SetActive(false);
             ayarlarPanel.SetActive(false);
             oyuncuSecim.SetActive(false);
             spinnerPanel.SetActive(false);
@@ -124,13 +133,15 @@ namespace QuizGame.Setup
                        new Vector2(0, 140), new Vector2(600, 50), new Color(0.8f, 0.8f, 0.8f));
 
             // Butonlar
-            OlusturButon(panel.transform, "OynaButton", "OYNA", new Vector2(0, 40), new Vector2(300, 60),
+            OlusturButon(panel.transform, "OynaButton", "OYNA", new Vector2(0, 60), new Vector2(300, 60),
                         new Color(0.2f, 0.7f, 0.3f));
-            OlusturButon(panel.transform, "SiniflarButton", "SINIFLAR", new Vector2(0, -40), new Vector2(300, 60),
+            OlusturButon(panel.transform, "SiniflarButton", "SINIFLAR", new Vector2(0, -20), new Vector2(300, 60),
                         new Color(0.3f, 0.5f, 0.8f));
-            OlusturButon(panel.transform, "AyarlarButton", "AYARLAR", new Vector2(0, -120), new Vector2(300, 60),
+            OlusturButon(panel.transform, "SorularButton", "SORULAR", new Vector2(0, -100), new Vector2(300, 60),
+                        new Color(0.5f, 0.3f, 0.8f));
+            OlusturButon(panel.transform, "AyarlarButton", "AYARLAR", new Vector2(0, -180), new Vector2(300, 60),
                         new Color(0.6f, 0.6f, 0.2f));
-            OlusturButon(panel.transform, "CikisButton", "ÇIKIŞ", new Vector2(0, -200), new Vector2(300, 60),
+            OlusturButon(panel.transform, "CikisButton", "ÇIKIŞ", new Vector2(0, -260), new Vector2(300, 60),
                         new Color(0.7f, 0.2f, 0.2f));
 
             return panel;
@@ -178,6 +189,143 @@ namespace QuizGame.Setup
             // Geri butonu
             OlusturButon(panel.transform, "GeriButton", "← GERİ",
                         new Vector2(-380, 450), new Vector2(150, 50), new Color(0.5f, 0.5f, 0.5f));
+
+            return panel;
+        }
+
+        // ═══════════════════════════════════════════════════
+        //  SORU YÖNETİM PANELİ (YENİ)
+        // ═══════════════════════════════════════════════════
+
+        private GameObject OlusturSoruYonetimPaneli(Transform parent)
+        {
+            GameObject panel = OlusturPanel(parent, "SoruYonetimPanel", new Color(0.1f, 0.1f, 0.2f, 0.95f));
+            panel.AddComponent<RuntimeQuestionManagerUI>();
+
+            // Başlık
+            OlusturText(panel.transform, "SoruBaslik", "SORU YONETİMİ", 42,
+                       new Vector2(0, 450), new Vector2(600, 80), Color.white);
+
+            // === Soru Listesi Panel ===
+            GameObject listePanel = OlusturPanel(panel.transform, "SoruListesiPanel",
+                new Color(0.12f, 0.14f, 0.2f, 0.8f), new Vector2(0, -40), new Vector2(950, 780));
+
+            // Filtre satır
+            OlusturText(listePanel.transform, "ToplamText", "Toplam: 0", 14,
+                new Vector2(-350, 340), new Vector2(200, 30), new Color(0.7f, 0.7f, 0.7f));
+
+            // Soru listesi scroll alanı
+            GameObject listContent = new GameObject("SoruListesiContent");
+            listContent.transform.SetParent(listePanel.transform, false);
+            RectTransform lRect = listContent.AddComponent<RectTransform>();
+            lRect.anchorMin = new Vector2(0, 0);
+            lRect.anchorMax = new Vector2(1, 1);
+            lRect.offsetMin = new Vector2(20, 80);
+            lRect.offsetMax = new Vector2(-20, -60);
+            VerticalLayoutGroup vlg = listContent.AddComponent<VerticalLayoutGroup>();
+            vlg.spacing = 4;
+            vlg.childForceExpandWidth = true;
+            vlg.childForceExpandHeight = false;
+            vlg.padding = new RectOffset(5, 5, 5, 5);
+            listContent.AddComponent<ContentSizeFitter>().verticalFit = ContentSizeFitter.FitMode.PreferredSize;
+
+            // Yeni Soru & Geri butonları
+            OlusturButon(listePanel.transform, "YeniSoruButton", "+ Yeni Soru",
+                new Vector2(330, 340), new Vector2(180, 45), new Color(0.2f, 0.7f, 0.3f));
+            OlusturButon(listePanel.transform, "GeriButton", "GERİ",
+                new Vector2(-380, 340), new Vector2(120, 45), new Color(0.5f, 0.5f, 0.5f));
+
+            // === Soru Detay Panel ===
+            GameObject detayPanel = OlusturPanel(panel.transform, "SoruDetayPanel",
+                new Color(0.12f, 0.14f, 0.22f, 0.9f), new Vector2(0, -40), new Vector2(800, 600));
+            detayPanel.SetActive(false);
+
+            OlusturText(detayPanel.transform, "DetayBaslik", "", 20,
+                new Vector2(0, 240), new Vector2(700, 40), Color.white);
+            OlusturText(detayPanel.transform, "DetaySoruText", "", 18,
+                new Vector2(0, 160), new Vector2(700, 80), Color.white);
+
+            // 4 şık text alanı
+            for (int i = 0; i < 4; i++)
+            {
+                OlusturText(detayPanel.transform, "DetaySikText" + i, "", 16,
+                    new Vector2(0, 80 - i * 45), new Vector2(600, 35), Color.white);
+            }
+
+            OlusturText(detayPanel.transform, "DetayAciklamaText", "", 14,
+                new Vector2(0, -120), new Vector2(600, 40), new Color(0.8f, 0.8f, 0.5f));
+
+            OlusturButon(detayPanel.transform, "DetayDuzenleButton", "Duzenle",
+                new Vector2(-100, -200), new Vector2(150, 45), new Color(0.3f, 0.5f, 0.8f));
+            OlusturButon(detayPanel.transform, "DetaySilButton", "Sil",
+                new Vector2(100, -200), new Vector2(150, 45), new Color(0.7f, 0.2f, 0.2f));
+            OlusturButon(detayPanel.transform, "DetayGeriButton", "GERİ",
+                new Vector2(0, -260), new Vector2(150, 40), new Color(0.5f, 0.5f, 0.5f));
+
+            // === Soru Düzenleme Panel ===
+            GameObject duzenlePanel = OlusturPanel(panel.transform, "SoruDuzenlePanel",
+                new Color(0.12f, 0.14f, 0.22f, 0.9f), new Vector2(0, -40), new Vector2(800, 700));
+            duzenlePanel.SetActive(false);
+
+            OlusturText(duzenlePanel.transform, "FormBaslik", "Yeni Soru Ekle", 24,
+                new Vector2(0, 300), new Vector2(600, 40), Color.white);
+
+            OlusturButon(duzenlePanel.transform, "FormKaydetButton", "Kaydet",
+                new Vector2(-100, -300), new Vector2(150, 45), new Color(0.2f, 0.7f, 0.3f));
+            OlusturButon(duzenlePanel.transform, "FormIptalButton", "Iptal",
+                new Vector2(100, -300), new Vector2(150, 45), new Color(0.5f, 0.5f, 0.5f));
+
+            return panel;
+        }
+
+        // ═══════════════════════════════════════════════════
+        //  ÖĞRENCİ DETAY PANELİ (YENİ)
+        // ═══════════════════════════════════════════════════
+
+        private GameObject OlusturOgrenciDetayPaneli(Transform parent)
+        {
+            GameObject panel = OlusturPanel(parent, "OgrenciDetayPanel", new Color(0.08f, 0.1f, 0.18f, 0.97f));
+            panel.AddComponent<StudentDetailUI>();
+
+            // Üst Bar
+            OlusturText(panel.transform, "BaslikText", "Ogrenci Detay", 28,
+                new Vector2(0, 470), new Vector2(800, 50), Color.white);
+            OlusturButon(panel.transform, "GeriButton", "GERİ",
+                new Vector2(-420, 470), new Vector2(120, 45), new Color(0.5f, 0.5f, 0.5f));
+
+            // Tab butonları
+            string[] tablar = { "Genel", "Dersler", "Haftalik", "Gunluk", "Trendler" };
+            Color tabRenk = new Color(0.2f, 0.22f, 0.28f, 0.9f);
+            for (int i = 0; i < tablar.Length; i++)
+            {
+                float x = -320 + i * 160;
+                OlusturButon(panel.transform, "Tab" + tablar[i], tablar[i],
+                    new Vector2(x, 410), new Vector2(145, 40), tabRenk);
+            }
+
+            // 5 Tab panel (her biri ScrollView + Content)
+            string[] tabAdlari = { "GenelPanel", "DerslerPanel", "HaftalikPanel", "GunlukPanel", "TrendlerPanel" };
+            for (int i = 0; i < tabAdlari.Length; i++)
+            {
+                GameObject tabPanel = OlusturPanel(panel.transform, tabAdlari[i],
+                    new Color(0.1f, 0.12f, 0.18f, 0.6f), new Vector2(0, -50), new Vector2(950, 750));
+                if (i > 0) tabPanel.SetActive(false);
+
+                // Scroll content
+                GameObject content = new GameObject(tabAdlari[i].Replace("Panel", "Content"));
+                content.transform.SetParent(tabPanel.transform, false);
+                RectTransform cRect = content.AddComponent<RectTransform>();
+                cRect.anchorMin = Vector2.zero;
+                cRect.anchorMax = Vector2.one;
+                cRect.offsetMin = new Vector2(15, 15);
+                cRect.offsetMax = new Vector2(-15, -15);
+                VerticalLayoutGroup cvlg = content.AddComponent<VerticalLayoutGroup>();
+                cvlg.spacing = 6;
+                cvlg.childForceExpandWidth = true;
+                cvlg.childForceExpandHeight = false;
+                cvlg.padding = new RectOffset(10, 10, 10, 10);
+                content.AddComponent<ContentSizeFitter>().verticalFit = ContentSizeFitter.FitMode.PreferredSize;
+            }
 
             return panel;
         }

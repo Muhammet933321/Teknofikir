@@ -43,6 +43,9 @@ namespace QuizGame.UI
         [SerializeField] private Button ogrenciKaydetButton;
         [SerializeField] private Button ogrenciIptalButton;
 
+        [Header("═══ Öğrenci Detay ═══")]
+        [SerializeField] private StudentDetailUI ogrenciDetayUI;
+
         private ClassData seciliSinif;
         private bool listenersReady;
 
@@ -213,15 +216,34 @@ namespace QuizGame.UI
                 textler[0].text = $"{ogrenci.ogrenciNo} - {ogrenci.TamAd}";
             }
 
-            // Sil butonu
             var butonlar = item.GetComponentsInChildren<Button>();
+
+            // İlk buton (veya metin alanın kendisi) — öğrenci detayını aç
             if (butonlar.Length > 0)
             {
-                // Son buton sil butonudur
+                butonlar[0].onClick.AddListener(() => OgrenciDetayGoster(ogrenci));
+            }
+
+            // Son buton sil butonudur (eğer birden fazla buton varsa)
+            if (butonlar.Length > 1)
+            {
                 butonlar[butonlar.Length - 1].onClick.AddListener(() =>
                 {
                     OgrenciSil(ogrenci.id);
                 });
+            }
+        }
+
+        /// <summary>Öğrenci detay panelini açar.</summary>
+        private void OgrenciDetayGoster(StudentData ogrenci)
+        {
+            if (ogrenciDetayUI != null)
+            {
+                ogrenciDetayUI.OgrenciGoster(ogrenci);
+            }
+            else
+            {
+                Debug.LogWarning("[ClassManagement] ogrenciDetayUI atanmamış!");
             }
         }
 

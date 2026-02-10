@@ -133,14 +133,26 @@ namespace QuizGame.UI
             Image bg = item.AddComponent<Image>();
             bg.color = new Color(0.18f, 0.22f, 0.3f, 0.8f);
 
-            // Öğrenci bilgi text'i
+            // Öğrenci bilgi buton (tıklanabilir alan — detay görüntüleme için)
+            GameObject bilgiBtn = new GameObject("BilgiButton");
+            bilgiBtn.transform.SetParent(item.transform, false);
+            RectTransform bilgiBtnRect = bilgiBtn.AddComponent<RectTransform>();
+            bilgiBtnRect.sizeDelta = new Vector2(600, 40);
+            LayoutElement bilgiBtnLE = bilgiBtn.AddComponent<LayoutElement>();
+            bilgiBtnLE.flexibleWidth = 1;
+            bilgiBtnLE.preferredHeight = 40;
+            Image bilgiBtnBg = bilgiBtn.AddComponent<Image>();
+            bilgiBtnBg.color = new Color(0.2f, 0.25f, 0.35f, 0.5f);
+            bilgiBtn.AddComponent<Button>();
+
+            // Öğrenci bilgi text'i (bilgiBtn'nin çocuğu)
             GameObject bilgiObj = new GameObject("BilgiText");
-            bilgiObj.transform.SetParent(item.transform, false);
+            bilgiObj.transform.SetParent(bilgiBtn.transform, false);
             RectTransform bilgiRect = bilgiObj.AddComponent<RectTransform>();
-            bilgiRect.sizeDelta = new Vector2(600, 40);
-            LayoutElement bilgiLE = bilgiObj.AddComponent<LayoutElement>();
-            bilgiLE.flexibleWidth = 1;
-            bilgiLE.preferredHeight = 40;
+            bilgiRect.anchorMin = Vector2.zero;
+            bilgiRect.anchorMax = Vector2.one;
+            bilgiRect.offsetMin = new Vector2(8, 0);
+            bilgiRect.offsetMax = new Vector2(-8, 0);
 
             TextMeshProUGUI bilgiTmp = bilgiObj.AddComponent<TextMeshProUGUI>();
             bilgiTmp.text = "1234 - Ad Soyad";

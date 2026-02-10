@@ -13,24 +13,36 @@ adım adım açıklar.
 
 Scripts/QuizGame/
 ├── Data/
-│   ├── StudentData.cs        → Öğrenci, Sınıf, Okul veri modelleri
-│   ├── QuestionData.cs       → Soru, Zorluk, Ders veri modelleri
-│   └── AnalyticsData.cs      → Performans takip veri modelleri
+│   ├── StudentData.cs             → Öğrenci, Sınıf, Okul veri modelleri
+│   ├── QuestionData.cs            → Soru, Zorluk, Ders veri modelleri
+│   ├── AnalyticsData.cs           → Performans takip veri modelleri
+│   ├── StudentPerformanceData.cs  → Detaylı öğrenci performansı
+│   └── WeeklyReportData.cs        → Haftalık/günlük rapor hesaplayıcı
 │
 ├── Managers/
 │   ├── DataManager.cs        → Veri kaydetme/yükleme (JSON)
 │   └── GameManager.cs        → Oyun akışı yönetimi (Singleton)
 │
 ├── UI/
-│   ├── MainMenuController.cs  → Ana menü (Oyna/Sınıflar/Ayarlar/Çıkış)
-│   ├── ClassManagementUI.cs   → Sınıf/öğrenci ekleme-silme UI
-│   ├── PlayerSelectionUI.cs   → 2 oyuncu seçim ekranı
-│   ├── DifficultySpinnerUI.cs → Zorluk seçimi + ok döndürme
-│   ├── QuizUI.cs             → Soru gösterme + 2 ayrı 4 şık
-│   ├── GameHUD.cs            → Oyun içi bilgi (can, skor, soru no)
-│   ├── GameOverUI.cs         → Oyun sonu sonuç ekranı
-│   ├── SettingsUI.cs         → Ayarlar paneli
-│   └── ListItemFactory.cs   → Dinamik liste elemanı oluşturucu
+│   ├── MainMenuController.cs      → Ana menü (Oyna/Sınıflar/Sorular/Ayarlar/Çıkış)
+│   ├── ClassManagementUI.cs       → Sınıf/öğrenci ekleme-silme UI
+│   ├── RuntimeQuestionManagerUI.cs→ Soru ekleme/düzenleme/silme (Runtime)
+│   ├── StudentDetailUI.cs         → Öğrenci detay + grafikler (Runtime)
+│   ├── RuntimeGraphRenderer.cs    → Çubuk/ilerleme grafik sistemi (Runtime)
+│   ├── PlayerSelectionUI.cs       → 2 oyuncu seçim ekranı
+│   ├── DifficultySpinnerUI.cs     → Zorluk seçimi + ok döndürme
+│   ├── QuizUI.cs                  → Soru gösterme + 2 ayrı 4 şık
+│   ├── GameHUD.cs                 → Oyun içi bilgi (can, skor, soru no)
+│   ├── GameOverUI.cs              → Oyun sonu sonuç ekranı
+│   ├── SettingsUI.cs              → Ayarlar paneli
+│   └── ListItemFactory.cs        → Dinamik liste elemanı oluşturucu
+│
+├── Editor/
+│   ├── SteampunkPanelBuilder.cs   → Steampunk temali panel olusturma araci
+│   ├── QuestionEditorPro.cs       → Soru duzenleyici (Editor penceresi)
+│   ├── ProgressDashboard.cs       → Ilerleme paneli (Editor penceresi)
+│   ├── StudentReportUI.cs         → Ogrenci raporu (Editor penceresi)
+│   └── GraphRenderer.cs           → Editor grafik cizici
 │
 ├── Gameplay/
 │   └── PlayerCharacter.cs    → Karakter can/vuruş/hasar sistemi
@@ -43,12 +55,36 @@ Scripts/QuizGame/
   ADIM 1: SAHNE KURULUMU (MainMenuScene)
 ═══════════════════════════════════════════════════════════════
 
-1) Unity Editor'da "MainMenuScene" sahnesini açın.
+YONTEM A - STEAMPUNK UI TEMASI (ONERILEN):
+==========================================
+Zaten Steampunk UI temali bir sahneniz varsa (Gentleland SteampunkUI):
 
-2) Hierarchy'de boş bir GameObject oluşturun:
-   - Adı: "QuizGameSetup"
+1) Unity Editor'da "MainMenuScene" sahnesini acin.
+
+2) Menu cubugunda: Tools > Quiz Game > Steampunk Panelleri Olustur
+
+3) Bu arac otomatik olarak:
+   - SoruYonetimPanel olusturur (Steampunk sprite'lari ile)
+   - OgrenciDetayPanel olusturur (5 tab: Genel/Dersler/Haftalik/Gunluk/Trendler)
+   - MainMenuController.sorularButton → SorularBtn baglar
+   - MainMenuController.soruYonetimPanel → yeni panel baglar
+   - ClassManagementUI.ogrenciDetayUI → yeni panel baglar
+   - Tum butonlar SpriteSwap transition ile Steampunk temali olusur
+   - Input field ve dropdown'lar da temali olusur
+
+4) Sahneyi kaydedin (Ctrl+S)
+
+5) Play Mode'da test edin:
+   - Ana menude SORULAR butonuna tiklayin → Soru Yonetim Paneli acilir
+   - Sinif yonetiminden ogrenci tiklayin → Ogrenci Detay Paneli acilir
+
+
+YONTEM B - SIFIRDAN KURULUM:
+=============================
+1) Hierarchy'de bos bir GameObject olusturun:
+   - Adi: "QuizGameSetup"
    - QuizGameUISetup scriptini ekleyin
-   - Inspector'da sağ tıklayıp "Sahneyi Oluştur" çalıştırın
+   - Inspector'da sag tiklayip "Sahneyi Olustur" calistirin
    
    Bu script otomatik olarak:
    - Canvas,
@@ -96,6 +132,7 @@ Canvas altında "AnaMenuPanel" oluşturun:
   * BaslikText (TextMeshPro): "QUIZ SAVAŞI"
   * OynaButton (Button + TextMeshPro): "OYNA"
   * SiniflarButton (Button + TextMeshPro): "SINIFLAR"
+  * SorularButton (Button + TextMeshPro): "SORULAR"
   * AyarlarButton (Button + TextMeshPro): "AYARLAR"
   * CikisButton (Button + TextMeshPro): "ÇIKIŞ"
 
@@ -209,11 +246,51 @@ GameManager Inspector'ından şu referansları sürükleyin:
 MainMenuController Inspector'ından:
 - oynaButton → OYNA butonu
 - siniflarButton → SINIFLAR butonu
+- sorularButton → SORULAR butonu        (YENİ!)
 - ayarlarButton → AYARLAR butonu
 - cikisButton → ÇIKIŞ butonu
 - sinifYonetimPanel → SinifYonetimPanel
+- soruYonetimPanel → SoruYonetimPanel    (YENİ!)
 - ayarlarPanel → AyarlarPanel
 - oyuncuSecimPanel → OyuncuSecimPanel
+
+
+═══════════════════════════════════════════════════════════════
+  ADIM 12: SORU YÖNETİM PANELİ    (YENİ!)
+═══════════════════════════════════════════════════════════════
+
+"SoruYonetimPanel" oluşturun:
+- RuntimeQuestionManagerUI.cs ekleyin
+- 3 alt panel:
+  * soruListesiPanel → Arama InputField + Zorluk/Ders Dropdown + ScrollView
+  * soruDetayPanel   → Soru metni + 4 şık + açıklama + Düzenle/Sil butonları
+  * soruDuzenlePanel → Form: InputField (soru) + 4 InputField (şıklar) +
+                        4 Toggle (doğru cevap) + Zorluk/Ders Dropdown +
+                        Açıklama InputField + Kaydet/İptal butonları
+
+NOT: Build aldıktan sonra da çalışır! Kullanıcılar kendi sorularını
+     ekleyip çıkartabilir.
+
+
+═══════════════════════════════════════════════════════════════
+  ADIM 13: ÖĞRENCİ DETAY PANELİ    (YENİ!)
+═══════════════════════════════════════════════════════════════
+
+"OgrenciDetayPanel" oluşturun:
+- StudentDetailUI.cs ekleyin
+- Üst bar: Öğrenci adı text + Geri butonu
+- Tab butonları: Genel / Dersler / Haftalık / Günlük / Trendler (5 Button)
+- 5 tab paneli (her biri ScrollView + Content):
+  * genelPanel     → Başarı çubuğu, özet kartlar, ders çubukları
+  * derslerPanel   → Her ders için detaylı istatistik
+  * haftalikPanel  → Haftalık çubuk grafik + tablo + karşılaştırma
+  * gunlukPanel    → Günlük çubuk grafik + tablo + ders bazlı
+  * trendlerPanel  → Trend grafikleri + değerlendirme
+
+ClassManagementUI Inspector'ından:
+- ogrenciDetayUI → OgrenciDetayPanel'deki StudentDetailUI component
+
+Sınıf detayında öğrenci satırına tıklanınca StudentDetailUI açılır.
 
 
 ═══════════════════════════════════════════════════════════════
@@ -239,7 +316,20 @@ MainMenuController Inspector'ından:
    │
    ├── SINIFLAR → Sınıf Yönetim
    │   ├── Sınıf Ekle / Sil
-   │   └── Öğrenci Ekle / Sil (Ad, Soyad, No)
+   │   ├── Öğrenci Ekle / Sil (Ad, Soyad, No)
+   │   └── Öğrenci Tıkla → ÖĞRENCİ DETAY
+   │       ├── Genel Özet (başarı, kartlar)
+   │       ├── Ders Detayları (zorluk kırılımı)
+   │       ├── Haftalık Grafik + Karşılaştırma
+   │       ├── Günlük Tablo + Çubuklar
+   │       └── Trend Analizi + Değerlendirme
+   │
+   ├── SORULAR → Soru Yönetimi (Build sonrası da çalışır!)
+   │   ├── Soru Listesi (filtreleme + arama)
+   │   ├── Soru Detay (şıklar, doğru cevap)
+   │   ├── Yeni Soru Ekle (form)
+   │   ├── Soru Düzenle
+   │   └── Soru Sil
    │
    ├── AYARLAR → Ses, Müzik, Ceza süresi, Can sayısı
    └── ÇIKIŞ → Uygulamayı kapat
