@@ -117,8 +117,8 @@ namespace QuizGame.UI
             if (dondurButton != null) dondurButton.interactable = false;
             if (devamButton != null) devamButton.gameObject.SetActive(false);
 
-            // Ok'u sıfırla
-            if (okImage != null) okImage.rotation = Quaternion.identity;
+            // Ok'u sıfırla (sadece Z rotasyonunu sıfırla)
+            if (okImage != null) okImage.localEulerAngles = Vector3.zero;
         }
 
         public void Gizle()
@@ -168,6 +168,7 @@ namespace QuizGame.UI
                 else
                 {
                     if (dondurButton != null) dondurButton.interactable = true;
+                    if (devamButton != null) devamButton.gameObject.SetActive(false);
                     if (sonucText != null)
                         sonucText.text = "Farklı zorluklar seçildi! Oku döndürün.";
                 }
@@ -206,21 +207,25 @@ namespace QuizGame.UI
 
                 if (okImage != null)
                 {
-                    okImage.Rotate(Vector3.forward, -mevcutHiz * Time.deltaTime);
+                    Vector3 aci = okImage.localEulerAngles;
+                    aci.z -= mevcutHiz * Time.deltaTime;
+                    okImage.localEulerAngles = aci;
                 }
 
                 yield return null;
             }
 
-            // Final açısını belirle
+            // Final açısını belirle (sadece Z ekseni)
             float finalAci = 0f;
             if (okImage != null)
             {
-                finalAci = okImage.eulerAngles.z;
+                finalAci = okImage.localEulerAngles.z;
             }
 
-            // 0-180 arası = Oyuncu 1'in seçimi, 180-360 arası = Oyuncu 2'nin seçimi
-            bool oyuncu1Kazandi = (finalAci >= 0 && finalAci < 180);
+            // Ok Z=0'da sağa bakıyor:
+            //   Sol taraf (Oyuncu 1): 90° - 270° arası
+            //   Sağ taraf (Oyuncu 2): 0°-90° veya 270°-360° arası
+            bool oyuncu1Kazandi = (finalAci >= 90f && finalAci < 270f);
 
             SecilenZorluk = oyuncu1Kazandi ? oyuncu1Secim : oyuncu2Secim;
 

@@ -612,8 +612,52 @@ namespace QuizGame.Managers
                 // 7) Arkaplanı geri getir
                 if (canvasArkaplan != null) canvasArkaplan.SetActive(true);
 
-                // 8) Sonraki soruya geç
+                // 8) Açıklama gerekiyorsa göster, kullanıcı kapatana kadar bekle
+                if (quizUI != null && quizUI.AciklamaGosterilecekMi)
+                {
+                    yield return StartCoroutine(AciklamaGosterVeBekle());
+                }
+
+                // 9) Sonraki soruya geç
                 DurumDegistir(OyunDurumu.SoruGosterim);
+            }
+        }
+
+        /// <summary>Açıklama panelini açar, kullanıcı kapatana kadar bekler.</summary>
+        private IEnumerator AciklamaGosterVeBekle()
+        {
+            // Quiz UI'yı tekrar görünür yap (açıklama paneli için)
+            if (quizUI != null)
+            {
+                quizUI.gameObject.SetActive(true);
+                var cg = quizUI.GetComponent<CanvasGroup>();
+                if (cg != null)
+                {
+                    cg.alpha = 1f;
+                    cg.blocksRaycasts = true;
+                    cg.interactable = true;
+                }
+            }
+
+            // Açıklama panelini aç
+            bool aciklamaKapandi = false;
+            System.Action oncekiHandler = quizUI.OnSoruPaneliKapandi;
+            quizUI.OnSoruPaneliKapandi = () => { aciklamaKapandi = true; };
+
+            quizUI.AciklamaPaneliAc();
+
+            // Kullanıcı "Devam" butonuna basana kadar bekle
+            while (!aciklamaKapandi)
+                yield return null;
+
+            // Orijinal handler'ı geri yükle
+            quizUI.OnSoruPaneliKapandi = oncekiHandler;
+
+            // Quiz UI'yı tekrar gizle
+            if (quizUI != null)
+            {
+                quizUI.Gizle();
+                quizUI.gameObject.SetActive(false);
             }
         }
 

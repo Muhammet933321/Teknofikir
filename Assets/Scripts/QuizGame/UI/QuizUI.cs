@@ -78,6 +78,8 @@ namespace QuizGame.UI
         public System.Action<int, QuestionData, float, int> OnYanlisCevap; // oyuncuIndex, soru, cevapSuresi, secilenSik
         /// <summary>Soru paneli tamamen kaybolunca tetiklenir. GameManager bunu bekleyerek karakter animasyonunu başlatır.</summary>
         public System.Action OnSoruPaneliKapandi;
+        /// <summary>Savaş animasyonu bittikten sonra açıklama gösterilmesi gerekip gerekmediğini belirler.</summary>
+        public bool AciklamaGosterilecekMi => yanlisYapildi && mevcutSoru != null && mevcutSoru.AciklamaVar;
 
         private bool listenersReady;
 
@@ -250,17 +252,9 @@ namespace QuizGame.UI
                 Oyuncu1ButonlariAktifEt(false);
                 Oyuncu2ButonlariAktifEt(false);
 
-                // Yanlış yapıldıysa ve açıklama varsa → önce açıklama göster, sonra soru kaybolsun
-                if (yanlisYapildi && mevcutSoru.AciklamaVar)
-                {
-                    // Önce soru panelini kaybet, sonra açıklama göster
-                    StartCoroutine(SoruKaybolSonraAciklamaGoster());
-                }
-                else
-                {
-                    // Soru panelini aşağı kaydır ve kaybet
-                    StartCoroutine(SoruKaybolmaAnimasyonu());
-                }
+                // Her durumda önce quiz panelini fade-out yap
+                // Savaş animasyonu sonrası eğer açıklama gerekiyorsa GameManager yönetecek
+                StartCoroutine(SoruKaybolmaAnimasyonu());
             }
             else
             {
@@ -298,13 +292,10 @@ namespace QuizGame.UI
         //  AÇIKLAMA PANELİ
         // ═══════════════════════════════════════════════════
 
-        /// <summary>Soru panelini kaybet, ardından açıklama panelini göster.</summary>
-        private IEnumerator SoruKaybolSonraAciklamaGoster()
+        /// <summary>Soru panelini kaybet, ardından açıklama panelini göster.
+        /// GameManager savaş animasyonundan sonra bunu çağırır.</summary>
+        public void AciklamaPaneliAc()
         {
-            // Önce soru panelini aşağı kaydırarak kaybet
-            yield return StartCoroutine(SoruKaybolmaAnimasyonuInternal());
-
-            // Sonra açıklama panelini göster
             AciklamaPaneliGoster();
         }
 
