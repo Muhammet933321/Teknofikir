@@ -157,6 +157,9 @@ namespace QuizGame.UI
 
         public void SoruGoster(QuestionData soru, int soruNumarasi, string oyuncu1Ad, string oyuncu2Ad)
         {
+            // Önceki animasyonları durdur (eski fade coroutine'leri çarpışmasın)
+            StopAllCoroutines();
+
             mevcutSoru = soru;
             soruAktif = true;
             soruBaslangicZamani = Time.time;
@@ -365,6 +368,9 @@ namespace QuizGame.UI
             cg.alpha = 0f;
             cg.blocksRaycasts = false;
             cg.interactable = false;
+
+            // Soru panelini deaktif et (açıklama gösterilirken tekrar görünmesin)
+            if (soruPanel != null) soruPanel.gameObject.SetActive(false);
         }
 
         /// <summary>Root CanvasGroup'u lazily oluşturur/alır (fade animasyonu için).</summary>
@@ -447,6 +453,8 @@ namespace QuizGame.UI
         {
             StopAllCoroutines();
             if (soruPanel != null) soruPanel.gameObject.SetActive(false);
+            if (aciklamaPaneli != null) aciklamaPaneli.SetActive(false);
+            aciklamaBekliyor = false;
             // CanvasGroup'u sıfırla (sonraki kullanım için)
             var cg = QuizCanvasGroupGetir();
             cg.alpha = 1f;

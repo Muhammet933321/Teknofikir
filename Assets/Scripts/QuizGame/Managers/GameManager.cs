@@ -552,6 +552,13 @@ namespace QuizGame.Managers
 
             if (vuran != null && vurulan != null)
             {
+                // ── Her iki karakteri de Idle state'ine zorla ──
+                // Önceki rounddan kalan Attack/GetHit state'i varsa temizlenir.
+                // Animator.Play ile doğrudan geçiş yapılır, trigger'a bağlı değil.
+                vuran.IdleDurumunaDon();
+                vurulan.IdleDurumunaDon();
+                yield return null; // Animator'ın state değişimi için 1 frame bekle
+
                 // Animation Event'i beklemek için flag
                 bool vurusGerceklesti = false;
                 System.Action eventHandler = () => { vurusGerceklesti = true; };
@@ -594,6 +601,12 @@ namespace QuizGame.Managers
 
             if (birisiOldu)
             {
+                // Vuruş animasyonunun görsel olarak bitmesini bekle
+                yield return new WaitForSeconds(vurusSonrasiBekleme);
+
+                // Saldıranı Idle'a döndür (ölüm animasyonundaki karakter hariç)
+                if (vuran != null && vuran.HayattaMi) vuran.IdleDurumunaDon();
+
                 // Ölüm animasyonu tamamen oynasın — sahne dramatik kalsın
                 Debug.Log($"Karakter öldü! Ölüm animasyonu bekleniyor ({olumAnimasyonBeklemeSuresi}s)...");
                 yield return new WaitForSeconds(olumAnimasyonBeklemeSuresi);
@@ -608,6 +621,10 @@ namespace QuizGame.Managers
             {
                 // 6) Normal akış: Vuruş sonrası bekleme
                 yield return new WaitForSeconds(vurusSonrasiBekleme);
+
+                // Her iki karakteri de Idle'a döndür (sonraki round için hazır olsun)
+                if (vuran != null) vuran.IdleDurumunaDon();
+                if (vurulan != null) vurulan.IdleDurumunaDon();
 
                 // 7) Arkaplanı geri getir
                 if (canvasArkaplan != null) canvasArkaplan.SetActive(true);
@@ -836,7 +853,7 @@ namespace QuizGame.Managers
             sonDogruOyuncuIndex = -1;
 
             // Ana menü sahnesine geç
-            SceneManager.LoadScene("MainMenuScene");
+            SceneManager.LoadScene("GameScene");
         }
     }
 }

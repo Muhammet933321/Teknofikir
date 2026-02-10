@@ -142,25 +142,29 @@ namespace QuizGame.Gameplay
             mevcutCan = Mathf.Max(0, mevcutCan - miktar);
             CanlariGuncelle();
 
-            // Animator hasar tetikleme
-            if (karakterAnimator != null)
-                karakterAnimator.SetTrigger("HasarAl");
-
-            // Hasar flash efekti
-            StartCoroutine(HasarFlashEfekti());
-
-            OnCanDegisti?.Invoke(mevcutCan);
-            Debug.Log($"Oyuncu {oyuncuIndex + 1} ({oyuncuAdi}) hasar aldı! Kalan can: {mevcutCan}");
+            TumTriggerlariTemizle();
 
             if (mevcutCan <= 0)
             {
-                // Ölüm animasyonu
+                // Ölüm: Sadece "Ölüm" animasyonu oyna (HasarAl animasyonu ATLANIR)
                 if (karakterAnimator != null)
                     karakterAnimator.SetTrigger("Olum");
 
                 Debug.Log($"Oyuncu {oyuncuIndex + 1} ({oyuncuAdi}) elendi!");
                 OnOldu?.Invoke(oyuncuIndex);
             }
+            else
+            {
+                // Hayatta: Hasar reaksiyon animasyonu oyna
+                if (karakterAnimator != null)
+                    karakterAnimator.SetTrigger("HasarAl");
+            }
+
+            // Hasar flash efekti
+            StartCoroutine(HasarFlashEfekti());
+
+            OnCanDegisti?.Invoke(mevcutCan);
+            Debug.Log($"Oyuncu {oyuncuIndex + 1} ({oyuncuAdi}) hasar aldı! Kalan can: {mevcutCan}");
         }
 
         public void CanYenile()
@@ -168,6 +172,7 @@ namespace QuizGame.Gameplay
             mevcutCan = maksimumCan;
             CanlariGuncelle();
 
+            TumTriggerlariTemizle();
             if (karakterAnimator != null)
                 karakterAnimator.SetTrigger("Idle");
         }
@@ -188,8 +193,29 @@ namespace QuizGame.Gameplay
                 canText.text = $"Can: {mevcutCan}/{maksimumCan}";
         }
 
-        // ═══════════════════════════════════════════════════
-        //  VURUŞ ANİMASYONU (Animation Event Tabanlı)
+        /// <summary>Tüm Animator trigger'larını temizler. Eski trigger'lar yeni animasyonu engelleyemesin.</summary>
+        private void TumTriggerlariTemizle()
+        {
+            if (karakterAnimator == null) return;
+            karakterAnimator.ResetTrigger("Vurus");
+            karakterAnimator.ResetTrigger("HasarAl");
+            karakterAnimator.ResetTrigger("Olum");
+            karakterAnimator.ResetTrigger("Idle");
+        }
+
+        /// <summary>
+        /// Animator'ı doğrudan Idle state'ine zorlar.
+        /// Trigger'lara bağlı transition'lar bazen takılabilir (önceki animasyon bitmeden
+        /// yeni trigger set edilirse). Bu metot Animator.Play ile doğrudan state geçişi yapar,
+        /// böylece sonraki vuruş trigger'ı her zaman çalışır.
+        /// </summary>
+        public void IdleDurumunaDon()
+        {
+            TumTriggerlariTemizle();
+            if (karakterAnimator != null)
+                karakterAnimator.Play("Idle", 0, 0f);
+        }
+
         // ═══════════════════════════════════════════════════
 
         /// <summary>
@@ -206,6 +232,9 @@ namespace QuizGame.Gameplay
         public void VurusYap(PlayerCharacter hedef)
         {
             vurusHedefi = hedef;
+
+            // Eski trigger'ları temizle (Animator yanlış state'te kalmasın)
+            TumTriggerlariTemizle();
 
             // Animator'daki vuruş animasyonunu başlat
             if (karakterAnimator != null)
