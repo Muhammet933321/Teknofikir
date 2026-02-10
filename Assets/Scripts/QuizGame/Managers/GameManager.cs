@@ -54,6 +54,14 @@ namespace QuizGame.Managers
         [Header("═══ Oyun Alanı ═══")]
         [SerializeField] private GameObject oyunAlaniPanel; // Karakterlerin olduğu alan
 
+        [Header("═══ Canvas & Kamera ═══")]
+        [Tooltip("Ana UI Canvas. Boş bırakılırsa otomatik bulunur.\nRender Mode otomatik olarak 'Screen Space - Camera' yapılır.")]
+        [SerializeField] private Canvas anaCanvas;
+        [Tooltip("UI için kullanılacak kamera. Boş bırakılırsa Camera.main kullanılır.")]
+        [SerializeField] private Camera uiKamera;
+        [Tooltip("Canvas'ın kameraya uzaklığı. Karakterler bu mesafenin ARKASINDA kalmalı.\nKüçük değer = HUD karakterlerin önünde görünür (önerilen: 1-5).")]
+        [SerializeField] private float canvasUzaklik = 1f;
+
         [Header("═══ Karakter Görünürlük ═══")]
         [Tooltip("Doğru cevaptan sonra karakterlerin belirme süresi (saniye)")]
         [SerializeField] private float karakterBelirmeSuresi = 0.4f;
@@ -94,7 +102,44 @@ namespace QuizGame.Managers
 
         private void Start()
         {
+            // Canvas'ı Screen Space - Camera moduna geçir
+            CanvasKameraModonaGecir();
+
             DurumDegistir(OyunDurumu.AnaMenu);
+        }
+
+        /// <summary>
+        /// Canvas'ı Screen Space - Camera moduna geçirir.
+        /// Bu sayede 3D karakterler, opak UI panellerinin olmadığı
+        /// alanlarda görünür hale gelir. HUD paneli karakterlerin önünde kalır.
+        /// </summary>
+        private void CanvasKameraModonaGecir()
+        {
+            // Canvas otomatik bul
+            if (anaCanvas == null)
+                anaCanvas = FindObjectOfType<Canvas>();
+
+            if (anaCanvas == null)
+            {
+                Debug.LogWarning("GameManager: Sahnede Canvas bulunamadı!");
+                return;
+            }
+
+            // Kamerayı belirle
+            Camera kamera = uiKamera != null ? uiKamera : Camera.main;
+            if (kamera == null)
+            {
+                Debug.LogWarning("GameManager: UI kamerası bulunamadı! Canvas Overlay modunda kalacak.");
+                return;
+            }
+
+            // Screen Space - Camera moduna geç
+            anaCanvas.renderMode = RenderMode.ScreenSpaceCamera;
+            anaCanvas.worldCamera = kamera;
+            anaCanvas.planeDistance = canvasUzaklik;
+
+            Debug.Log($"Canvas 'Screen Space - Camera' moduna geçirildi. " +
+                $"Kamera: {kamera.name}, PlaneDistance: {canvasUzaklik}");
         }
 
         // ═══════════════════════════════════════════════════
@@ -114,7 +159,11 @@ namespace QuizGame.Managers
             // Oyun panelleri (VurusAnimasyonu sırasında quiz paneli kendi animasyonuyla kapanır)
             if (yeniDurum != OyunDurumu.VurusAnimasyonu)
             {
-                if (quizUI != null) quizUI.gameObject.SetActive(false);
+                if (quizUI != null)
+                {
+                    quizUI.Gizle();
+                    quizUI.gameObject.SetActive(false);
+                }
             }
             if (spinnerUI != null) spinnerUI.Gizle();
             if (gameOverUI != null) gameOverUI.Gizle();
@@ -481,11 +530,11 @@ namespace QuizGame.Managers
         }
 
         /// <summary>
-        /// Yeni akış: Karakterler belirir → Vüruş animasyonu → Hasar → Karakterler kaybolur → Sonraki soru
+        /// Yeni akış: Karakterler belirir → Vüruş animasyonu → Animation Event ile hasar → Karakterler kaybolur → Sonraki soru
         /// </summary>
         private IEnumerator KarakterAnimasyonuVeSoruGecisi(int dogruOyuncuIndex)
         {
-            // 1) Karakterleri görünür yap (fade-in / scale-up)
+            // 1) Karakterleri görünür yap (scale-up)
             yield return StartCoroutine(KarakterleriGosterAnimasyonlu());
 
             // 2) Kısa bekleme - oyuncu karakterleri görsün
@@ -497,9 +546,34 @@ namespace QuizGame.Managers
 
             if (vuran != null && vurulan != null)
             {
+                // Animation Event'i beklemek için flag
+                bool vurusGerceklesti = false;
+                System.Action eventHandler = () => { vurusGerceklesti = true; };
+
+                // Event'e abone ol
+                vuran.OnVurusEfektiTetiklendi += eventHandler;
+
+                // Vuruş animasyonunu başlat (event gelene kadar bekleyeceğiz)
                 vuran.VurusYap(vurulan);
-                yield return new WaitForSeconds(0.5f);
-                vurulan.HasarAl(1);
+
+                // Animation Event tetiklenene kadar bekle (güvenlik timeout: 3s)
+                float bekleme = 0f;
+                while (!vurusGerceklesti && bekleme < 3f)
+                {
+                    bekleme += Time.deltaTime;
+                    yield return null;
+                }
+
+                // Event'ten çık
+                vuran.OnVurusEfektiTetiklendi -= eventHandler;
+
+                if (!vurusGerceklesti)
+                {
+                    Debug.LogWarning("Vuruş Animation Event zamanında tetiklenmedi! " +
+                        "Animasyon clip'ine 'VurusAnimasyonuTetiklendi' event'i eklediğinizden emin olun.");
+                    // Fallback: event gelmezse manuel tetikle
+                    vurulan.HasarAl(1);
+                }
             }
 
             // 4) Can güncelle
@@ -512,7 +586,7 @@ namespace QuizGame.Managers
             // 5) Animasyon sonrası bekleme
             yield return new WaitForSeconds(vurusSonrasiBekleme);
 
-            // 6) Karakterleri gizle (fade-out / scale-down)
+            // 6) Karakterleri gizle (scale-down)
             yield return StartCoroutine(KarakterleriGizleAnimasyonlu());
 
             // 7) Sonraki soruya geç
@@ -676,7 +750,15 @@ namespace QuizGame.Managers
             }
 
             // Quiz UI ve HUD'ı gizle
-            if (quizUI != null) quizUI.Gizle();
+            if (quizUI != null)
+            {
+                quizUI.Gizle();
+                quizUI.gameObject.SetActive(false);
+            }
+            if (gameHUD != null) gameHUD.Gizle();
+
+            // Karakterleri de gizle
+            KarakterleriGizle();
         }
 
         private string ZayifDersleriGetir(PlayerGameResult sonuc)
@@ -725,9 +807,24 @@ namespace QuizGame.Managers
 
         private void AnaMenuyeDon()
         {
+            // Tüm coroutine'leri durdur (vuruş animasyonu vs. çalışıyor olabilir)
+            StopAllCoroutines();
+
+            // Tüm oyun panellerini kapat
             if (gameOverUI != null) gameOverUI.Gizle();
             if (gameHUD != null) gameHUD.Gizle();
+            if (quizUI != null)
+            {
+                quizUI.Gizle();
+                quizUI.gameObject.SetActive(false);
+            }
             if (oyunAlaniPanel != null) oyunAlaniPanel.SetActive(false);
+
+            // Karakterleri gizle
+            KarakterleriGizle();
+
+            // Durumu sıfırla
+            sonDogruOyuncuIndex = -1;
 
             // Ana menü sahnesine geç
             SceneManager.LoadScene("MainMenuScene");

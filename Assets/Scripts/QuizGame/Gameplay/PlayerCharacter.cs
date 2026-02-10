@@ -56,11 +56,16 @@ namespace QuizGame.Gameplay
         // Event'ler
         public System.Action<int> OnCanDegisti; // Kalan can
         public System.Action<int> OnOldu;       // Oyuncu index
+        /// <summary>Animasyon event'i tetiklendiğinde fırlar. GameManager bunu dinler.</summary>
+        public System.Action OnVurusEfektiTetiklendi;
 
         // Durum
         public int MevcutCan => mevcutCan;
         public bool HayattaMi => mevcutCan > 0;
         public int OyuncuIndex => oyuncuIndex;
+
+        // Vuruş hedefi (VurusYap'ta set edilir, event callback'te kullanılır)
+        private PlayerCharacter vurusHedefi;
 
         // Orijinal material renkleri (flash için)
         private Dictionary<Renderer, Color[]> orijinalRenkler = new Dictionary<Renderer, Color[]>();
@@ -186,58 +191,57 @@ namespace QuizGame.Gameplay
         }
 
         // ═══════════════════════════════════════════════════
-        //  VURUŞ ANİMASYONU (3D)
+        //  VURUŞ ANİMASYONU (Animation Event Tabanlı)
         // ═══════════════════════════════════════════════════
 
+        /// <summary>
+        /// Vuruş başlatır. Animator Vurus trigger'i tetiklenir.
+        /// Animator'daki vuruş animasyon clip'ine bir Animation Event ekleyin:
+        /// - Tam vuruşun temas ettiği frame'e event koyun
+        /// - Function: VurusAnimasyonuTetiklendi
+        /// 
+        /// O event tetiklendiğinde otomatik olarak:
+        ///   1) Vuruş efekti oluşur
+        ///   2) Rakip HasarAl tetiklenir
+        ///   3) OnVurusEfektiTetiklendi event'i fırlar (GameManager dinler)
+        /// </summary>
         public void VurusYap(PlayerCharacter hedef)
         {
-            StartCoroutine(VurusAnimasyonu(hedef));
-        }
+            vurusHedefi = hedef;
 
-        private IEnumerator VurusAnimasyonu(PlayerCharacter hedef)
-        {
-            // Vuruş animasyonunu tetikle
+            // Animator'daki vuruş animasyonunu başlat
             if (karakterAnimator != null)
                 karakterAnimator.SetTrigger("Vurus");
+        }
 
-            // Rakibe doğru küçük bir kayma hareketi
-            Vector3 orijinalPoz = transform.position;
-            Vector3 yon = (hedef.transform.position - transform.position).normalized;
-            Vector3 kaymaPoz = orijinalPoz + yon * vurusKaymaMesafesi;
-
-            // İleri kay
-            float t = 0;
-            float ileriSure = vurusAnimSuresi * 0.35f;
-            while (t < ileriSure)
+        /// <summary>
+        /// ANIMATION EVENT CALLBACK — Vuruş animasyonu clip'inden çağrılır.
+        /// Unity Animation penceresinde vuruş clip'inize bir event ekleyin
+        /// ve Function alanına "VurusAnimasyonuTetiklendi" yazın.
+        /// </summary>
+        public void VurusAnimasyonuTetiklendi()
+        {
+            if (vurusHedefi == null)
             {
-                t += Time.deltaTime;
-                float lerp = Mathf.SmoothStep(0, 1, t / ileriSure);
-                transform.position = Vector3.Lerp(orijinalPoz, kaymaPoz, lerp);
-                yield return null;
+                Debug.LogWarning($"Oyuncu {oyuncuIndex + 1}: Vuruş event tetiklendi ama hedef yok!");
+                return;
             }
 
-            // Vuruş efekti oluştur (vuruş anı)
-            if (vurusEfektiPrefab != null && hedef.vurusNoktasi != null)
+            Debug.Log($"Oyuncu {oyuncuIndex + 1}: VURUŞ EVENT! Hedef: Oyuncu {vurusHedefi.OyuncuIndex + 1}");
+
+            // 1) Vuruş efekti oluştur
+            if (vurusEfektiPrefab != null && vurusHedefi.vurusNoktasi != null)
             {
-                GameObject efekt = Instantiate(vurusEfektiPrefab, hedef.vurusNoktasi.position, Quaternion.identity);
+                GameObject efekt = Instantiate(vurusEfektiPrefab,
+                    vurusHedefi.vurusNoktasi.position, Quaternion.identity);
                 Destroy(efekt, 2f);
             }
 
-            // Kısa bekleme (vuruş temas anı)
-            yield return new WaitForSeconds(0.1f);
+            // 2) Rakibe hasar ver
+            vurusHedefi.HasarAl(1);
 
-            // Geri dön
-            t = 0;
-            float geriSure = vurusAnimSuresi * 0.55f;
-            while (t < geriSure)
-            {
-                t += Time.deltaTime;
-                float lerp = Mathf.SmoothStep(0, 1, t / geriSure);
-                transform.position = Vector3.Lerp(kaymaPoz, orijinalPoz, lerp);
-                yield return null;
-            }
-
-            transform.position = orijinalPoz;
+            // 3) Event fırlat (GameManager can günceller ve sonraki adıma geçer)
+            OnVurusEfektiTetiklendi?.Invoke();
         }
 
         // ═══════════════════════════════════════════════════

@@ -95,8 +95,12 @@ namespace QuizGame.Setup
         {
             GameObject canvasObj = new GameObject("QuizGameCanvas");
             Canvas canvas = canvasObj.AddComponent<Canvas>();
-            canvas.renderMode = RenderMode.ScreenSpaceOverlay;
-            canvas.sortingOrder = 10;
+
+            // Screen Space - Camera: 3D karakterler UI'ın arkasında,
+            // opak panel olmayan alanlarda görünür.
+            canvas.renderMode = RenderMode.ScreenSpaceCamera;
+            canvas.worldCamera = Camera.main;
+            canvas.planeDistance = 1f; // Küçük değer = HUD karakterlerin önünde kalır
 
             CanvasScaler scaler = canvasObj.AddComponent<CanvasScaler>();
             scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
