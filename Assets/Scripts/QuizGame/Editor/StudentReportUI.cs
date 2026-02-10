@@ -75,28 +75,62 @@ namespace QuizGame.Editor
         //  ANA ÇİZİM
         // ═══════════════════════════════════════════════════
 
+        // Offline veri kaynakları
+        private SchoolDatabase offlineOkulDB;
+        private PerformanceDatabase offlinePerfDB;
+
+        private void OfflineVerileriYukle()
+        {
+            string okulYolu = System.IO.Path.Combine(Application.persistentDataPath, "okul_veritabani.json");
+            string perfYolu = System.IO.Path.Combine(Application.persistentDataPath, "performans_veritabani.json");
+
+            if (System.IO.File.Exists(okulYolu))
+            {
+                try { offlineOkulDB = JsonUtility.FromJson<SchoolDatabase>(System.IO.File.ReadAllText(okulYolu)); }
+                catch { offlineOkulDB = new SchoolDatabase(); }
+            }
+            else offlineOkulDB = new SchoolDatabase();
+
+            if (System.IO.File.Exists(perfYolu))
+            {
+                try { offlinePerfDB = JsonUtility.FromJson<PerformanceDatabase>(System.IO.File.ReadAllText(perfYolu)); }
+                catch { offlinePerfDB = new PerformanceDatabase(); }
+            }
+            else offlinePerfDB = new PerformanceDatabase();
+        }
+
+        private void OnEnable()
+        {
+            OfflineVerileriYukle();
+        }
+
+        private void OnFocus()
+        {
+            OfflineVerileriYukle();
+        }
+
         private void OnGUI()
         {
             StilleriHazirla();
 
-            // DataManager kontrolü
-            if (!Application.isPlaying)
+            // DataManager veya offline veri kullan
+            if (Application.isPlaying && DataManager.Instance != null)
             {
-                EditorGUILayout.HelpBox(
-                    "Öğrenci performans verilerini görmek için oyunu çalıştırın.\n" +
-                    "DataManager çalışma zamanında (Play Mode) aktif olmalıdır.",
-                    MessageType.Info);
-                return;
+                dm = DataManager.Instance;
+                siniflar = dm.okulVeritabani.siniflar;
+            }
+            else
+            {
+                dm = null;
+                if (offlineOkulDB == null) OfflineVerileriYukle();
+                siniflar = offlineOkulDB?.siniflar;
             }
 
-            dm = DataManager.Instance;
-            if (dm == null)
+            if (siniflar == null)
             {
-                EditorGUILayout.HelpBox("DataManager bulunamadı!", MessageType.Error);
+                EditorGUILayout.HelpBox("Veri bulunamadı. Oyunu en az bir kez çalıştırın.", MessageType.Info);
                 return;
             }
-
-            siniflar = dm.okulVeritabani.siniflar;
 
             EditorGUILayout.BeginHorizontal();
             SolPanelCiz();
@@ -152,7 +186,10 @@ namespace QuizGame.Editor
                     if (GUILayout.Button($"{ogr.ogrenciNo} - {ogr.TamAd}", style))
                     {
                         secilenOgrenciIndex = i;
-                        secilenPerformans = dm.OgrenciPerformansiGetir(ogr.id);
+                        if (dm != null)
+                            secilenPerformans = dm.OgrenciPerformansiGetir(ogr.id);
+                        else
+                            secilenPerformans = offlinePerfDB?.PerformansGetir(ogr.id);
                     }
                 }
             }
