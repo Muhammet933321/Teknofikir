@@ -50,6 +50,45 @@ namespace QuizGame.UI
         [SerializeField] private Button formKaydetButton;
         [SerializeField] private Button formIptalButton;
 
+        [Header("═══ Liste Görünüm Ayarları ═══")]
+        [Tooltip("Liste öğelerinde kullanılacak font. Boş bırakılırsa varsayılan TMP fontu kullanılır.")]
+        [SerializeField] private TMP_FontAsset listeFont;
+
+        [Tooltip("Zorluk etiketi font boyutu (●K, ●O, ●Z)")]
+        [SerializeField] private float zorlukFontSize = 14f;
+        [Tooltip("Ders etiketi font boyutu")]
+        [SerializeField] private float dersFontSize = 13f;
+        [Tooltip("Soru metni font boyutu")]
+        [SerializeField] private float soruMetinFontSize = 14f;
+        [Tooltip("Sil butonu font boyutu")]
+        [SerializeField] private float silButonFontSize = 14f;
+
+        [Tooltip("Liste satır yüksekliği")]
+        [SerializeField] private float satirYuksekligi = 50f;
+        [Tooltip("Satırlar arası boşluk")]
+        [SerializeField] private float satirArasiBosluk = 6f;
+
+        [Tooltip("Satır arka plan rengi")]
+        [SerializeField] private Color satirArkaPlanRenk = new Color(0.16f, 0.18f, 0.25f, 0.85f);
+        [Tooltip("Soru butonu arka plan rengi")]
+        [SerializeField] private Color soruBtnArkaPlanRenk = new Color(0.2f, 0.22f, 0.3f, 0.5f);
+        [Tooltip("Soru metni rengi")]
+        [SerializeField] private Color soruMetinRenk = Color.white;
+        [Tooltip("Sil butonu arka plan rengi")]
+        [SerializeField] private Color silBtnRenk = new Color(0.65f, 0.2f, 0.2f);
+        [Tooltip("Sil butonu metin rengi")]
+        [SerializeField] private Color silBtnMetinRenk = Color.white;
+
+        [Tooltip("Zorluk etiket genişliği")]
+        [SerializeField] private float zorlukGenislik = 30f;
+        [Tooltip("Ders etiket genişliği")]
+        [SerializeField] private float dersGenislik = 85f;
+        [Tooltip("Sil butonu genişliği")]
+        [SerializeField] private float silButonGenislik = 55f;
+
+        [Tooltip("Soru metni sağdan kısaltma karakter limiti")]
+        [SerializeField] private int soruKarakterLimiti = 55;
+
         // ── Durum ──
         private QuestionData seciliSoru;
         private bool yeniModMu;
@@ -228,7 +267,9 @@ namespace QuizGame.UI
                 texts[1].color = RuntimeGraphRenderer.DersRenkleri[dI % RuntimeGraphRenderer.DersRenkleri.Length];
 
                 // Soru kısa metin
-                texts[2].text = soru.soruMetni.Length > 55 ? soru.soruMetni.Substring(0, 55) + "..." : soru.soruMetni;
+                int limit = soruKarakterLimiti > 0 ? soruKarakterLimiti : 55;
+                texts[2].text = soru.soruMetni.Length > limit ? soru.soruMetni.Substring(0, limit) + "..." : soru.soruMetni;
+                texts[2].color = soruMetinRenk;
             }
 
             // Tıklama - detay aç
@@ -446,36 +487,38 @@ namespace QuizGame.UI
             item.SetActive(false);
 
             RectTransform rect = item.AddComponent<RectTransform>();
-            rect.sizeDelta = new Vector2(800, 50);
+            rect.sizeDelta = new Vector2(800, satirYuksekligi);
 
             HorizontalLayoutGroup hlg = item.AddComponent<HorizontalLayoutGroup>();
-            hlg.spacing = 6;
+            hlg.spacing = satirArasiBosluk;
             hlg.childForceExpandWidth = false;
             hlg.childForceExpandHeight = true;
             hlg.padding = new RectOffset(8, 8, 4, 4);
 
             Image bg = item.AddComponent<Image>();
-            bg.color = new Color(0.16f, 0.18f, 0.25f, 0.85f);
+            bg.color = satirArkaPlanRenk;
 
             // Zorluk tag
             GameObject ztObj = new GameObject("ZorlukTag");
             ztObj.transform.SetParent(item.transform, false);
             ztObj.AddComponent<RectTransform>();
             LayoutElement ztLE = ztObj.AddComponent<LayoutElement>();
-            ztLE.preferredWidth = 30;
+            ztLE.preferredWidth = zorlukGenislik;
             var ztTmp = ztObj.AddComponent<TextMeshProUGUI>();
-            ztTmp.fontSize = 14;
+            ztTmp.fontSize = zorlukFontSize;
             ztTmp.alignment = TextAlignmentOptions.Center;
+            if (listeFont != null) ztTmp.font = listeFont;
 
             // Ders tag
             GameObject dtObj = new GameObject("DersTag");
             dtObj.transform.SetParent(item.transform, false);
             dtObj.AddComponent<RectTransform>();
             LayoutElement dtLE = dtObj.AddComponent<LayoutElement>();
-            dtLE.preferredWidth = 85;
+            dtLE.preferredWidth = dersGenislik;
             var dtTmp = dtObj.AddComponent<TextMeshProUGUI>();
-            dtTmp.fontSize = 13;
+            dtTmp.fontSize = dersFontSize;
             dtTmp.alignment = TextAlignmentOptions.Left;
+            if (listeFont != null) dtTmp.font = listeFont;
 
             // Soru butonu
             GameObject soruBtn = new GameObject("SoruButton");
@@ -483,9 +526,9 @@ namespace QuizGame.UI
             soruBtn.AddComponent<RectTransform>();
             LayoutElement soruLE = soruBtn.AddComponent<LayoutElement>();
             soruLE.flexibleWidth = 1;
-            soruLE.preferredHeight = 42;
+            soruLE.preferredHeight = satirYuksekligi - 8;
             Image soruBg = soruBtn.AddComponent<Image>();
-            soruBg.color = new Color(0.2f, 0.22f, 0.3f, 0.5f);
+            soruBg.color = soruBtnArkaPlanRenk;
             soruBtn.AddComponent<Button>();
 
             GameObject soruText = new GameObject("Text");
@@ -496,19 +539,20 @@ namespace QuizGame.UI
             stRect.offsetMin = new Vector2(8, 0);
             stRect.offsetMax = new Vector2(-8, 0);
             var stTmp = soruText.AddComponent<TextMeshProUGUI>();
-            stTmp.fontSize = 14;
-            stTmp.color = Color.white;
+            stTmp.fontSize = soruMetinFontSize;
+            stTmp.color = soruMetinRenk;
             stTmp.alignment = TextAlignmentOptions.Left;
+            if (listeFont != null) stTmp.font = listeFont;
 
             // Sil butonu
             GameObject silBtn = new GameObject("SilButton");
             silBtn.transform.SetParent(item.transform, false);
             silBtn.AddComponent<RectTransform>();
             LayoutElement silLE = silBtn.AddComponent<LayoutElement>();
-            silLE.preferredWidth = 55;
-            silLE.preferredHeight = 42;
+            silLE.preferredWidth = silButonGenislik;
+            silLE.preferredHeight = satirYuksekligi - 8;
             Image silBg = silBtn.AddComponent<Image>();
-            silBg.color = new Color(0.65f, 0.2f, 0.2f);
+            silBg.color = silBtnRenk;
             silBtn.AddComponent<Button>();
 
             GameObject silText = new GameObject("Text");
@@ -519,11 +563,12 @@ namespace QuizGame.UI
             slRect.offsetMin = Vector2.zero;
             slRect.offsetMax = Vector2.zero;
             var slTmp = silText.AddComponent<TextMeshProUGUI>();
-            slTmp.text = "SİL";
-            slTmp.fontSize = 14;
-            slTmp.color = Color.white;
+            slTmp.text = "SIL";
+            slTmp.fontSize = silButonFontSize;
+            slTmp.color = silBtnMetinRenk;
             slTmp.alignment = TextAlignmentOptions.Center;
             slTmp.fontStyle = FontStyles.Bold;
+            if (listeFont != null) slTmp.font = listeFont;
 
             item.transform.SetParent(transform, false);
             return item;
