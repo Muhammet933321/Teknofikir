@@ -45,6 +45,7 @@ namespace QuizGame.UI
         [SerializeField] private TextMeshProUGUI bilgiText; // "Doğru!" veya "Yanlış!" gösterir
 
         [Header("═══ Açıklama Paneli ═══")]
+        [Tooltip("DIKKAT: Bu panel soruPanel'in DISINDA, ayri bir panel olmali!\nQuiz panelinin cocugu olursa quiz kapaninca bu da kapanir.")]
         [SerializeField] private GameObject aciklamaPaneli;
         [SerializeField] private TextMeshProUGUI aciklamaText;
         [SerializeField] private Button aciklamaDevamButton;
@@ -72,6 +73,8 @@ namespace QuizGame.UI
         // Event: Doğru cevap verildiğinde tetiklenir
         public System.Action<int, QuestionData, float> OnDogruCevap; // oyuncuIndex, soru, cevapSuresi
         public System.Action<int, QuestionData, float, int> OnYanlisCevap; // oyuncuIndex, soru, cevapSuresi, secilenSik
+        /// <summary>Soru paneli tamamen kaybolunca tetiklenir. GameManager bunu bekleyerek karakter animasyonunu başlatır.</summary>
+        public System.Action OnSoruPaneliKapandi;
 
         private bool listenersReady;
 
@@ -236,10 +239,11 @@ namespace QuizGame.UI
                 Oyuncu1ButonlariAktifEt(false);
                 Oyuncu2ButonlariAktifEt(false);
 
-                // Yanlış yapıldıysa ve açıklama varsa → açıklama panelini göster
+                // Yanlış yapıldıysa ve açıklama varsa → önce açıklama göster, sonra soru kaybolsun
                 if (yanlisYapildi && mevcutSoru.AciklamaVar)
                 {
-                    AciklamaPaneliGoster();
+                    // Önce soru panelini kaybet, sonra açıklama göster
+                    StartCoroutine(SoruKaybolSonraAciklamaGoster());
                 }
                 else
                 {
@@ -283,9 +287,26 @@ namespace QuizGame.UI
         //  AÇIKLAMA PANELİ
         // ═══════════════════════════════════════════════════
 
+        /// <summary>Soru panelini kaybet, ardından açıklama panelini göster.</summary>
+        private IEnumerator SoruKaybolSonraAciklamaGoster()
+        {
+            // Önce soru panelini aşağı kaydırarak kaybet
+            yield return StartCoroutine(SoruKaybolmaAnimasyonuInternal());
+
+            // Sonra açıklama panelini göster
+            AciklamaPaneliGoster();
+        }
+
         private void AciklamaPaneliGoster()
         {
-            if (aciklamaPaneli == null) return;
+            if (aciklamaPaneli == null)
+            {
+                Debug.LogWarning("AciklamaPaneli atanmamis! Inspector'da atayin.\n" +
+                    "ONEMLI: Panel, soruPanel'in DISINDA bagimsiz bir panel olmalidir.");
+                // Panel yoksa direkt kapandı say
+                OnSoruPaneliKapandi?.Invoke();
+                return;
+            }
 
             aciklamaBekliyor = true;
 
@@ -302,15 +323,25 @@ namespace QuizGame.UI
 
             aciklamaBekliyor = false;
 
-            // Açıklama kapatıldıktan sonra soru kaybolma animasyonu başlat
-            StartCoroutine(SoruKaybolmaAnimasyonu());
+            // Açıklama kapatıldı → artık karakter animasyonuna geçilebilir
+            OnSoruPaneliKapandi?.Invoke();
         }
 
         // ═══════════════════════════════════════════════════
         //  ANİMASYON
         // ═══════════════════════════════════════════════════
 
+        /// <summary>Soru kaybolma animasyonu + tamamlandı event'i (açıklama yoksa).</summary>
         private IEnumerator SoruKaybolmaAnimasyonu()
+        {
+            yield return StartCoroutine(SoruKaybolmaAnimasyonuInternal());
+
+            // Açıklama gösterilmediyse direkt "kapandı" event'i fırlat
+            OnSoruPaneliKapandi?.Invoke();
+        }
+
+        /// <summary>Sadece görsel animasyon (event fırlatmaz).</summary>
+        private IEnumerator SoruKaybolmaAnimasyonuInternal()
         {
             if (soruPanel == null) yield break;
 

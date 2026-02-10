@@ -54,6 +54,14 @@ namespace QuizGame.Managers
         [Header("═══ Oyun Alanı ═══")]
         [SerializeField] private GameObject oyunAlaniPanel; // Karakterlerin olduğu alan
 
+        [Header("═══ Karakter Görünürlük ═══")]
+        [Tooltip("Doğru cevaptan sonra karakterlerin belirme süresi (saniye)")]
+        [SerializeField] private float karakterBelirmeSuresi = 0.4f;
+        [Tooltip("Animasyon bittikten sonra karakterlerin kaybolma süresi (saniye)")]
+        [SerializeField] private float karakterKaybolmaSuresi = 0.3f;
+        [Tooltip("Vüruş animasyonundan sonra bekleme süresi (saniye)")]
+        [SerializeField] private float vurusSonrasiBekleme = 1.5f;
+
         // Oyuncu verileri
         private StudentData oyuncu1Data;
         private StudentData oyuncu2Data;
@@ -66,6 +74,7 @@ namespace QuizGame.Managers
         private ZorlukSeviyesi mevcutZorluk;
         private DersKategorisi mevcutDers;
         private string mevcutMacId;
+        private int sonDogruOyuncuIndex = -1; // Son doğru cevap veren (karakter animasyonu için)
 
         // Sonuç verileri
         private PlayerGameResult oyuncu1Sonuc;
@@ -212,6 +221,7 @@ namespace QuizGame.Managers
             {
                 quizUI.OnDogruCevap = DogruCevapVerildi;
                 quizUI.OnYanlisCevap = YanlisCevapVerildi;
+                quizUI.OnSoruPaneliKapandi = SoruPaneliKapandiHandler;
             }
 
             // Oyun alanını göster
@@ -319,6 +329,10 @@ namespace QuizGame.Managers
 
             // Quiz panelini aktif et ve soruyu göster
             var soru = mevcutSorular[soruIndex];
+
+            // Soru gösterilmeden önce karakterleri gizle
+            KarakterleriGizle();
+
             if (quizUI != null)
             {
                 quizUI.gameObject.SetActive(true);
@@ -421,9 +435,25 @@ namespace QuizGame.Managers
             // HUD güncelle
             SkorlariGuncelle();
 
-            // Vuruş animasyonuna geç
+            // Soru index'ini artır (sonraki soru için)
+            soruIndex++;
+            sonDogruOyuncuIndex = oyuncuIndex;
+
+            // Durum değiştir ama animasyonu hemen başlatma!
+            // QuizUI soru panelini kaybedecek (+ varsa açıklama gösterecek)
+            // Paneller tamamen kapanınca OnSoruPaneliKapandi tetiklenecek
+            // O zaman karakter animasyonu başlayacak
             DurumDegistir(OyunDurumu.VurusAnimasyonu);
-            StartCoroutine(VurusVeSoruGecisi(oyuncuIndex));
+        }
+
+        /// <summary>QuizUI soru paneli (ve varsa açıklama) tamamen kapandığında çağrılır.</summary>
+        private void SoruPaneliKapandiHandler()
+        {
+            if (mevcutDurum != OyunDurumu.VurusAnimasyonu) return;
+            if (sonDogruOyuncuIndex < 0) return;
+
+            // Şimdi karakterleri göster ve animasyonu başlat
+            StartCoroutine(KarakterAnimasyonuVeSoruGecisi(sonDogruOyuncuIndex));
         }
 
         private void YanlisCevapVerildi(int oyuncuIndex, QuestionData soru, float cevapSuresi, int secilenSik)
@@ -450,12 +480,18 @@ namespace QuizGame.Managers
             }
         }
 
-        private IEnumerator VurusVeSoruGecisi(int dogruOyuncuIndex)
+        /// <summary>
+        /// Yeni akış: Karakterler belirir → Vüruş animasyonu → Hasar → Karakterler kaybolur → Sonraki soru
+        /// </summary>
+        private IEnumerator KarakterAnimasyonuVeSoruGecisi(int dogruOyuncuIndex)
         {
-            // Soru kaybolma animasyonu bitmesini bekle
-            yield return new WaitForSeconds(2.0f);
+            // 1) Karakterleri görünür yap (fade-in / scale-up)
+            yield return StartCoroutine(KarakterleriGosterAnimasyonlu());
 
-            // Doğru yapan, yanlış yapana vuruş yapar
+            // 2) Kısa bekleme - oyuncu karakterleri görsün
+            yield return new WaitForSeconds(0.3f);
+
+            // 3) Doğru cevap veren karakter rakibe vuruş yapar
             PlayerCharacter vuran = dogruOyuncuIndex == 0 ? oyuncu1Karakter : oyuncu2Karakter;
             PlayerCharacter vurulan = dogruOyuncuIndex == 0 ? oyuncu2Karakter : oyuncu1Karakter;
 
@@ -466,23 +502,98 @@ namespace QuizGame.Managers
                 vurulan.HasarAl(1);
             }
 
-            // Can güncelle
+            // 4) Can güncelle
             if (gameHUD != null)
             {
                 if (oyuncu1Karakter != null) gameHUD.CanlariGuncelle(0, oyuncu1Karakter.MevcutCan);
                 if (oyuncu2Karakter != null) gameHUD.CanlariGuncelle(1, oyuncu2Karakter.MevcutCan);
             }
 
-            yield return new WaitForSeconds(1.0f);
+            // 5) Animasyon sonrası bekleme
+            yield return new WaitForSeconds(vurusSonrasiBekleme);
 
-            // Sonraki soruya geç
-            soruIndex++;
+            // 6) Karakterleri gizle (fade-out / scale-down)
+            yield return StartCoroutine(KarakterleriGizleAnimasyonlu());
 
-            // Yeni zorluk seçimi (her soru için) veya direkt sonraki soru
-            // Her soru için yeni zorluk seçmek isteniyorsa:
-            // DurumDegistir(OyunDurumu.ZorlukSecimi);
-            // Aynı zorlukla devam:
+            // 7) Sonraki soruya geç
             DurumDegistir(OyunDurumu.SoruGosterim);
+        }
+
+        // =================== Eşki yöntem (geriye uyumluluk) ===================
+        private IEnumerator VurusVeSoruGecisi(int dogruOyuncuIndex)
+        {
+            yield return StartCoroutine(KarakterAnimasyonuVeSoruGecisi(dogruOyuncuIndex));
+        }
+
+        // ═══════════════════════════════════════════════════
+        //  KARAKTER GÖRÜNÜRLÜK SİSTEMİ
+        // ═══════════════════════════════════════════════════
+
+        /// <summary>Karakterleri anında gizler (animasyonsuz).</summary>
+        private void KarakterleriGizle()
+        {
+            if (oyuncu1Karakter != null) oyuncu1Karakter.Gizle();
+            if (oyuncu2Karakter != null) oyuncu2Karakter.Gizle();
+        }
+
+        /// <summary>Karakterleri animasyonlu şekilde gösterir (scale 0→1).</summary>
+        private IEnumerator KarakterleriGosterAnimasyonlu()
+        {
+            // Önce scale 0 ile aktif et
+            if (oyuncu1Karakter != null)
+            {
+                oyuncu1Karakter.transform.localScale = Vector3.zero;
+                oyuncu1Karakter.Goster();
+            }
+            if (oyuncu2Karakter != null)
+            {
+                oyuncu2Karakter.transform.localScale = Vector3.zero;
+                oyuncu2Karakter.Goster();
+            }
+
+            // Animate scale 0 → 1
+            float t = 0f;
+            Vector3 hedefScale1 = oyuncu1Karakter != null ? Vector3.one : Vector3.one;
+            Vector3 hedefScale2 = oyuncu2Karakter != null ? Vector3.one : Vector3.one;
+
+            while (t < karakterBelirmeSuresi)
+            {
+                t += Time.deltaTime;
+                float lerp = Mathf.SmoothStep(0f, 1f, t / karakterBelirmeSuresi);
+
+                if (oyuncu1Karakter != null)
+                    oyuncu1Karakter.transform.localScale = Vector3.Lerp(Vector3.zero, hedefScale1, lerp);
+                if (oyuncu2Karakter != null)
+                    oyuncu2Karakter.transform.localScale = Vector3.Lerp(Vector3.zero, hedefScale2, lerp);
+
+                yield return null;
+            }
+
+            if (oyuncu1Karakter != null) oyuncu1Karakter.transform.localScale = hedefScale1;
+            if (oyuncu2Karakter != null) oyuncu2Karakter.transform.localScale = hedefScale2;
+        }
+
+        /// <summary>Karakterleri animasyonlu şekilde gizler (scale 1→0).</summary>
+        private IEnumerator KarakterleriGizleAnimasyonlu()
+        {
+            Vector3 baslangicScale1 = oyuncu1Karakter != null ? oyuncu1Karakter.transform.localScale : Vector3.one;
+            Vector3 baslangicScale2 = oyuncu2Karakter != null ? oyuncu2Karakter.transform.localScale : Vector3.one;
+
+            float t = 0f;
+            while (t < karakterKaybolmaSuresi)
+            {
+                t += Time.deltaTime;
+                float lerp = Mathf.SmoothStep(0f, 1f, t / karakterKaybolmaSuresi);
+
+                if (oyuncu1Karakter != null)
+                    oyuncu1Karakter.transform.localScale = Vector3.Lerp(baslangicScale1, Vector3.zero, lerp);
+                if (oyuncu2Karakter != null)
+                    oyuncu2Karakter.transform.localScale = Vector3.Lerp(baslangicScale2, Vector3.zero, lerp);
+
+                yield return null;
+            }
+
+            KarakterleriGizle();
         }
 
         // ═══════════════════════════════════════════════════

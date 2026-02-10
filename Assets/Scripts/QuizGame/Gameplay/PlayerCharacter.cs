@@ -107,6 +107,25 @@ namespace QuizGame.Gameplay
         }
 
         // ═══════════════════════════════════════════════════
+        //  GÖRÜNÜRLÜK (Soru sırasında gizle, animasyon için göster)
+        // ═══════════════════════════════════════════════════
+
+        /// <summary>Karakteri gizler. GameManager soru gösterilirken çağırır.</summary>
+        public void Gizle()
+        {
+            gameObject.SetActive(false);
+        }
+
+        /// <summary>Karakteri gösterir. GameManager vuruş animasyonu için çağırır.</summary>
+        public void Goster()
+        {
+            gameObject.SetActive(true);
+            // Idle'a dön (tekrar göründüğünde)
+            if (karakterAnimator != null)
+                karakterAnimator.SetTrigger("Idle");
+        }
+
+        // ═══════════════════════════════════════════════════
         //  CAN SİSTEMİ
         // ═══════════════════════════════════════════════════
 
